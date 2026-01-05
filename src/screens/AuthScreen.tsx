@@ -36,6 +36,7 @@ const AuthScreen: React.FC = () => {
                         data: {
                             full_name: username,
                         },
+                        emailRedirectTo: window.location.origin,
                     },
                 });
                 if (error) throw error;
