@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="src/images/logo.png" alt="AllForDev Wellness Logo" width="150" style="border-radius: 50%;" />
+  <img src="./images/logo.png" alt="AllForDev Wellness Logo" width="150" style="border-radius: 50%;" />
 </div>
 
 # 🌿 AllForDev Wellness
