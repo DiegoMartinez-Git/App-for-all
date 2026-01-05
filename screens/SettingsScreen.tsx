@@ -80,9 +80,9 @@ const SettingsScreen: React.FC = () => {
                         ) : (
                             <>
                                 <div className="flex items-center gap-6 mb-6">
-                                    <div className="size-20 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-3xl font-bold text-slate-400">
+                                    <div className="size-20 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-3xl font-bold text-slate-400 overflow-hidden">
                                         {profile?.avatar_url ? (
-                                            <img src={profile.avatar_url} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                                            <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                                         ) : (
                                             profile?.full_name?.charAt(0).toUpperCase() || 'U'
                                         )}
@@ -99,14 +99,15 @@ const SettingsScreen: React.FC = () => {
                                         </button>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label className="block text-sm font-medium text-text-secondary mb-1">Nombre de Usuario</label>
                                         <input
                                             type="text"
                                             value={profile?.full_name || ''}
-                                            readOnly
-                                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-surface-dark-light rounded-lg px-4 py-2 focus:ring-primary text-slate-500 cursor-not-allowed"
+                                            onChange={(e) => setProfile(prev => prev ? { ...prev, full_name: e.target.value } : null)}
+                                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-surface-dark-light rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none transition-all"
                                         />
                                     </div>
                                     <div>
@@ -114,13 +115,107 @@ const SettingsScreen: React.FC = () => {
                                         <input
                                             type="email"
                                             value={profile?.email || ''}
-                                            readOnly
-                                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-surface-dark-light rounded-lg px-4 py-2 focus:ring-primary text-slate-500 cursor-not-allowed"
+                                            onChange={(e) => setProfile(prev => prev ? { ...prev, email: e.target.value } : null)}
+                                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-surface-dark-light rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none transition-all"
                                         />
+                                        <p className="text-xs text-text-secondary mt-1">Cambiar el email requerirá confirmación.</p>
                                     </div>
                                 </div>
+                                <button
+                                    onClick={async () => {
+                                        if (!user || !profile) return;
+                                        setLoadingProfile(true);
+                                        try {
+                                            // Update Profile Data
+                                            const { error: profileError } = await supabase
+                                                .from('profiles')
+                                                .update({ full_name: profile.full_name })
+                                                .eq('id', user.id);
+
+                                            if (profileError) throw profileError;
+
+                                            // Update Email if changed
+                                            if (profile.email !== user.email) {
+                                                const { error: emailError } = await supabase.auth.updateUser({ email: profile.email });
+                                                if (emailError) throw emailError;
+                                                alert('Perfil actualizado. Se ha enviado un correo de confirmación a tu nueva dirección.');
+                                            } else {
+                                                alert('Perfil actualizado correctamente.');
+                                            }
+                                        } catch (error: any) {
+                                            alert('Error al actualizar perfil: ' + error.message);
+                                        } finally {
+                                            setLoadingProfile(false);
+                                        }
+                                    }}
+                                    disabled={loadingProfile}
+                                    className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg font-medium text-sm disabled:opacity-50"
+                                >
+                                    {loadingProfile ? 'Guardando...' : 'Guardar Cambios'}
+                                </button>
                             </>
                         )}
+                    </section>
+
+                    <section className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-surface-dark-light p-6">
+                        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary">lock</span>
+                            Seguridad
+                        </h2>
+                        <form
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                const form = e.target as HTMLFormElement;
+                                const newPassword = (form.elements.namedItem('newPassword') as HTMLInputElement).value;
+                                const confirmPassword = (form.elements.namedItem('confirmPassword') as HTMLInputElement).value;
+
+                                if (newPassword !== confirmPassword) {
+                                    alert('Las contraseñas no coinciden.');
+                                    return;
+                                }
+
+                                if (newPassword.length < 6) {
+                                    alert('La contraseña debe tener al menos 6 caracteres.');
+                                    return;
+                                }
+
+                                try {
+                                    const { error } = await supabase.auth.updateUser({ password: newPassword });
+                                    if (error) throw error;
+                                    alert('Contraseña actualizada correctamente.');
+                                    form.reset();
+                                } catch (error: any) {
+                                    alert('Error al actualizar contraseña: ' + error.message);
+                                }
+                            }}
+                            className="flex flex-col gap-4"
+                        >
+                            <div>
+                                <label className="block text-sm font-medium text-text-secondary mb-1">Nueva Contraseña</label>
+                                <input
+                                    name="newPassword"
+                                    type="password"
+                                    className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-surface-dark-light rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none transition-all"
+                                    placeholder="Ingrese nueva contraseña"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-text-secondary mb-1">Confirmar Contraseña</label>
+                                <input
+                                    name="confirmPassword"
+                                    type="password"
+                                    className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-surface-dark-light rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none transition-all"
+                                    placeholder="Repita nueva contraseña"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <button type="submit" className="bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-medium text-sm">
+                                    Cambiar Contraseña
+                                </button>
+                            </div>
+                        </form>
                     </section>
 
                     <section className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-surface-dark-light p-6">
@@ -164,8 +259,8 @@ const SettingsScreen: React.FC = () => {
                         </button>
                     </section>
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     );
 };
 

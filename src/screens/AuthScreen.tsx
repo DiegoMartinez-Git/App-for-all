@@ -8,6 +8,7 @@ const AuthScreen: React.FC = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [isSignUp, setIsSignUp] = useState(false);
+    const [isResetMode, setIsResetMode] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
 
@@ -17,7 +18,14 @@ const AuthScreen: React.FC = () => {
         setError(null);
 
         try {
-            if (isSignUp) {
+            if (isResetMode) {
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/#/settings', // Redirect to change/update password
+                });
+                if (error) throw error;
+                alert('Se ha enviado un correo para restablecer tu contraseña.');
+                setIsResetMode(false);
+            } else if (isSignUp) {
                 // Extract username from email (before @)
                 const username = email.split('@')[0];
 
@@ -59,13 +67,13 @@ const AuthScreen: React.FC = () => {
                 <div className="flex gap-2 mb-6 bg-slate-100 dark:bg-background-dark p-1 rounded-lg">
                     <button
                         className={`flex-1 py-2 rounded-md font-bold text-sm transition-all ${!isSignUp ? 'bg-white dark:bg-surface-dark shadow text-primary' : 'text-text-secondary'}`}
-                        onClick={() => setIsSignUp(false)}
+                        onClick={() => { setIsSignUp(false); setIsResetMode(false); }}
                     >
                         Iniciar Sesión
                     </button>
                     <button
                         className={`flex-1 py-2 rounded-md font-bold text-sm transition-all ${isSignUp ? 'bg-white dark:bg-surface-dark shadow text-primary' : 'text-text-secondary'}`}
-                        onClick={() => setIsSignUp(true)}
+                        onClick={() => { setIsSignUp(true); setIsResetMode(false); }}
                     >
                         Registrarse
                     </button>
@@ -90,25 +98,40 @@ const AuthScreen: React.FC = () => {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-bold text-text-secondary mb-1">Contraseña</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-surface-dark-light rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
-                            placeholder="••••••••"
-                        />
-                    </div>
+                    {!isResetMode && (
+                        <div>
+                            <label className="block text-sm font-bold text-text-secondary mb-1">Contraseña</label>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-surface-dark-light rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
+                                placeholder="••••••••"
+                            />
+                        </div>
+                    )}
 
                     <button
                         type="submit"
                         disabled={loading}
                         className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-lg shadow-lg shadow-primary/20 transition-all mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? 'Procesando...' : (isSignUp ? 'Crear Cuenta' : 'Entrar')}
+                        {loading ? 'Procesando...' : (isResetMode ? 'Enviar Enlace de Recuperación' : (isSignUp ? 'Crear Cuenta' : 'Entrar'))}
                     </button>
+
+                    {!isSignUp && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsResetMode(!isResetMode);
+                                setError(null);
+                            }}
+                            className="text-sm text-primary hover:underline text-center mt-2"
+                        >
+                            {isResetMode ? 'Volver a Iniciar Sesión' : '¿Olvidaste tu contraseña?'}
+                        </button>
+                    )}
                 </form>
             </div>
         </div>
